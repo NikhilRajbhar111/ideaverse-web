@@ -22,12 +22,9 @@
   .btn{background:var(--bg3);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px}
   .btn:hover{border-color:var(--accent)}
   .btn.primary{background:var(--accent2);border-color:var(--accent2);color:#fff}
-  .btn.icon{padding:5px 9px}
   #search{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--fg);padding:5px 9px;width:230px}
   #main{flex:1;display:flex;min-height:0}
   #sidebar{width:300px;min-width:200px;max-width:520px;background:var(--bg2);border-right:1px solid var(--border);overflow:auto;padding:6px 0}
-  #sidebar.resizing{user-select:none}
-  .grip{width:5px;cursor:col-resize;background:transparent}
   #content{flex:1;overflow:auto;padding:22px 30px}
   .tree-item{display:flex;align-items:center;gap:6px;padding:3px 8px;cursor:pointer;white-space:nowrap}
   .tree-item:hover{background:var(--bg3)}
@@ -64,13 +61,10 @@
   .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
   .modal input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--fg);padding:8px}
   .modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
-  .modal .mono{font-family:ui-monospace,monospace;font-size:11px;background:var(--bg3);padding:6px 8px;border-radius:6px;border:1px solid var(--border);word-break:break-all;margin-top:4px}
   .modal .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
   .empty{color:var(--muted);text-align:center;margin-top:18vh;font-size:15px}
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .syncbtn.syncing .spin{display:inline-block}
-  .spin{display:none}
 </style>
 </head>
 <body>
@@ -78,7 +72,6 @@
   <span class="logo">🧠</span>
   <span class="title">Ideaverse Web</span>
   <span id="demoBadge" class="badge" style="display:none">DEMO</span>
-  <span id="acctBadge" class="badge" style="display:none"></span>
   <span class="spacer"></span>
   <input id="search" placeholder="🔍 search notes…" />
   <button class="btn" id="syncBtn" title="reload vault">⟳ Sync</button>
@@ -86,8 +79,7 @@
 </header>
 <div id="main">
   <div id="sidebar"><div class="tree-loading">loading…</div></div>
-  <div class="grip" id="grip"></div>
-  <div id="content"><div class="empty">Open a note from the sidebar, or sign in to load your Drive vault.</div></div>
+  <div id="content"><div class="empty">Open a note from the sidebar, or set your Drive folder in ⚙ Settings.</div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -97,18 +89,12 @@
     <h3>Settings</h3>
     <label>Google Drive folder ID</label>
     <input id="setFolder" placeholder="folder ID from drive.google.com/.../folders/XXX" />
-    <label>Proxy URL (RECOMMENDED — no CORS, no OAuth)</label>
+    <div class="hint">This is the folder you shared "Anyone with the link can view". After moving it, the ID is unchanged — use the same one.</div>
+    <label>Proxy URL (recommended — no CORS, no key in browser)</label>
     <input id="setProxy" placeholder="https://your-worker.workers.dev" />
-    <div class="hint">
-      Paste your Cloudflare Worker URL here. The worker holds your API key server-side,
-      so the browser needs <b>no key and no sign-in</b>. Deploy the included
-      <code>worker.js</code> at workers.cloudflare.com (free), set the
-      <code>DRIVE_API_KEY</code> variable, and paste the resulting URL above.
-    </div>
-    <label style="opacity:.7">Google API key (fallback if no proxy)</label>
+    <div class="hint">Paste your Cloudflare Worker URL. The worker holds your API key server-side, so the browser needs no key and no sign-in. Deploy <code>worker.js</code> at workers.cloudflare.com (free), set the <code>DRIVE_API_KEY</code> secret, and paste the URL here.</div>
+    <label style="opacity:.7">Google API key (fallback only, if no proxy)</label>
     <input id="setKey" placeholder="AIza…" type="password" style="opacity:.7" />
-    <label style="opacity:.7">Google OAuth Client ID (fallback if no proxy)</label>
-    <input id="setClient" placeholder="xxxx.apps.googleusercontent.com" style="opacity:.7" />
     <div class="row">
       <button class="btn" id="setCancel">Cancel</button>
       <button class="btn primary" id="setSave">Save & Sync</button>
@@ -120,9 +106,7 @@
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 function toast(msg, isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',3200); }
-function sha256_hex(str){ const b=new TextEncoder().encode(str); return crypto.subtle.digest('SHA-256',b).then(h=>[...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')); }
 
 /* ---------- config (localStorage) ---------- */
 const CFG_KEY='ideaverse.cfg.v1';
@@ -130,9 +114,11 @@ const FOLDER_DEFAULT='1a-sVQYqCBO_KJ6HcmUdUPeNAuIOUmmkt';
 let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
 cfg.folder = cfg.folder || FOLDER_DEFAULT;
 cfg.apiKey = cfg.apiKey || '';
-cfg.clientId = cfg.clientId || '';
 cfg.proxy = cfg.proxy || '';
-let oauth = null; // {access_token, expires_at}
+
+/* Hidden items (Obsidian convention): names starting with a dot are config,
+   not notes — never show them in the tree. */
+const isHidden = name => typeof name==='string' && name.startsWith('.');
 
 /* ---------- URL building ---------- */
 function driveApiBase(){
@@ -140,18 +126,15 @@ function driveApiBase(){
   return 'https://www.googleapis.com/drive/v3/';
 }
 function mediaUrl(fileId){
-  if(cfg.proxy) return cfg.proxy.replace(/\/$/,'') + '/media/' + fileId;
+  if(cfg.proxy) return cfg.proxy.replace(/\/$/,'') + '/media/' + encodeURIComponent(fileId);
   let u='https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(fileId)+'?alt=media';
-  if(oauth) u+='&access_token='+encodeURIComponent(oauth.access_token);
-  else if(cfg.apiKey) u+='&key='+encodeURIComponent(cfg.apiKey);
+  if(cfg.apiKey) u+='&key='+encodeURIComponent(cfg.apiKey);
   return u;
 }
 function headers(){
-  // In proxy mode the worker holds the key and adds CORS — send nothing.
   if(cfg.proxy) return {'Accept':'application/json'};
   const h={'Accept':'application/json'};
-  if(oauth) h['Authorization']='Bearer '+oauth.access_token;
-  else if(cfg.apiKey) h['X-Api-Key']=cfg.apiKey;
+  if(cfg.apiKey) h['X-Api-Key']=cfg.apiKey;
   return h;
 }
 function apiList(folderId){
@@ -159,7 +142,7 @@ function apiList(folderId){
   const q="'"+folderId+"' in parents and trashed = false";
   const url=base+'files?pageSize=1000&fields=files(id,name,mimeType,size)&q='+encodeURIComponent(q);
   return fetch(url,{headers:headers()}).then(r=>{
-    if(!r.ok) throw new Error('list failed ('+r.status+') — '+(oauth?'check the vault is shared with you or sign in with the owner account':'check API key / folder share'));
+    if(!r.ok) throw new Error('list failed ('+r.status+') — '+(cfg.proxy?'check the worker / DRIVE_API_KEY secret':cfg.apiKey?'check API key / folder share':'no proxy or API key set'));
     return r.json();
   }).then(j=>j.files||[]);
 }
@@ -170,13 +153,13 @@ let allFiles=[];
 const sidebar=$('#sidebar');
 
 function buildTreeFromPaths(files){
-  const root={name:'ROOT',children:[],isFolder:true,expanded:true,id:'__root__',path:''};
-  const dirMap={ '':root };
+  const r={name:'ROOT',children:[],isFolder:true,expanded:true,id:'__root__',path:''};
+  const dirMap={ '':r };
   files.forEach(f=>{
     if(f.isFolder) return;
     const parts=f.path.split('/').filter(Boolean);
     const name=parts.pop();
-    let cur=root, acc='';
+    let cur=r, acc='';
     for(const p of parts){
       acc+=p+'/';
       if(!dirMap[acc]){
@@ -187,7 +170,7 @@ function buildTreeFromPaths(files){
     }
     cur.children.push({name:name,isFolder:false,id:f.id,path:f.path,mimeType:f.mimeType,size:f.size});
   });
-  return root;
+  return r;
 }
 function sortItems(a,b){ if(a.isFolder!==b.isFolder) return a.isFolder?-1:1; return a.name.localeCompare(b.name); }
 function renderTree(){
@@ -215,11 +198,7 @@ function renderTree(){
 }
 
 /* ---------- open / render ---------- */
-let currentFile=null;
 function openFile(node){
-  document.querySelectorAll('.tree-item.active').forEach(e=>e.classList.remove('active'));
-  // highlight
-  document.querySelectorAll('.tree-item').forEach(e=>{ if(e.textContent===node.name) {} });
   currentFile=node;
   const content=$('#content');
   content.innerHTML='<div class="doc"><div class="meta">'+esc(node.path||node.name)+' <span class="spinner"></span></div></div>';
@@ -233,7 +212,6 @@ function openFile(node){
     content.innerHTML='<div class="doc"><div class="meta">'+esc(node.name)+'</div><p style="color:#e06c6c">Failed to open: '+esc(e.message)+'</p></div>';
   });
 }
-const WIKI={};
 function bindWiki(){
   document.querySelectorAll('.wikilink').forEach(a=>{
     a.onclick=()=>{
@@ -305,23 +283,27 @@ async function loadRoot(){
     const files=await apiList(cfg.folder);
     const md=[];
     for(const f of files){
+      if(isHidden(f.name)) continue;                       // hide .obsidian etc.
       if(f.mimeType==='application/vnd.google-apps.folder'){
         md.push({id:f.id,name:f.name,isFolder:true,path:f.name,mimeType:f.mimeType});
         const kids=await apiList(f.id);
-        for(const k of kids) md.push({id:k.id,name:k.name,isFolder:k.mimeType==='application/vnd.google-apps.folder',path:f.name+'/'+k.name,mimeType:k.mimeType});
+        for(const k of kids){
+          if(isHidden(k.name)) continue;
+          md.push({id:k.id,name:k.name,isFolder:k.mimeType==='application/vnd.google-apps.folder',path:f.name+'/'+k.name,mimeType:k.mimeType});
+        }
       } else {
         md.push({id:f.id,name:f.name,isFolder:false,path:f.name,mimeType:f.mimeType});
       }
     }
-    allFiles=md.filter(f=>!f.isFolder || true);
-    // build search index
+    allFiles=md;
     allFiles.forEach(f=>{ if(!f.isFolder) fileIndex[f.id]={name:f.name,path:f.path}; });
     root.children=buildTreeFromPaths(md).children;
     root.children.forEach(c=>{ if(c.isFolder) c.expanded=true; });
     renderTree();
+    if(!md.length) sidebar.innerHTML='<div class="tree-loading">No notes found. Check the folder ID in Settings and that it is shared "Anyone with link".</div>';
   }catch(e){
     sidebar.innerHTML='<div class="tree-loading">error: '+esc(e.message)+'</div>';
-    if(/cors|failed to fetch|load resource/i.test(e.message)) toast('CORS blocked. Use the proxy URL in Settings, or run from a same-origin host.',true);
+    if(/cors|failed to fetch|load resource/i.test(e.message)) toast('Network/CORS error. Use the Proxy URL in Settings.',true);
   }
 }
 
@@ -343,7 +325,7 @@ $('#search').addEventListener('input',e=>{
 
 /* ---------- settings modal ---------- */
 function openSettings(){
-  $('#setFolder').value=cfg.folder; $('#setKey').value=cfg.apiKey; $('#setClient').value=cfg.clientId; $('#setProxy').value=cfg.proxy;
+  $('#setFolder').value=cfg.folder; $('#setKey').value=cfg.apiKey; $('#setProxy').value=cfg.proxy;
   $('#settingsModal').classList.add('show');
 }
 $('#settingsBtn').onclick=openSettings;
@@ -351,76 +333,17 @@ $('#setCancel').onclick=()=>$('#settingsModal').classList.remove('show');
 $('#setSave').onclick=()=>{
   cfg.folder=$('#setFolder').value.trim()||FOLDER_DEFAULT;
   cfg.apiKey=$('#setKey').value.trim();
-  cfg.clientId=$('#setClient').value.trim();
   cfg.proxy=$('#setProxy').value.trim();
   localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
   $('#settingsModal').classList.remove('show');
-  if(oauth && !cfg.clientId){ oauth=null; }
   loadRoot();
 };
 
-/* ---------- OAuth (PKCE, popup) ---------- */
-const SCOPES='https://www.googleapis.com/auth/drive.readonly';
-const REDIRECT=location.href.split('?')[0] + (location.href.split('?')[0].endsWith('/')?'':'/');
-function oauthRequired(){ return !!cfg.clientId && !oauth; }
-async function signIn(){
-  if(!cfg.clientId){ toast('Add a Google OAuth Client ID in Settings first',true); openSettings(); return; }
-  const verifier=b64url(crypto.getRandomValues(new Uint8Array(64)));
-  const challenge=await sha256_hex(verifier);
-  const state=b64url(crypto.getRandomValues(new Uint8Array(16)));
-  const authUrl='https://accounts.google.com/o/oauth2/v2/auth?'
-    +'client_id='+encodeURIComponent(cfg.clientId)
-    +'&redirect_uri='+encodeURIComponent(REDIRECT)
-    +'&response_type=code&scope='+encodeURIComponent(SCOPES)
-    +'&code_challenge='+encodeURIComponent(challenge)
-    +'&code_challenge_method=S256'
-    +'&state='+encodeURIComponent(state)
-    +'&access_type=offline&prompt=consent';
-  sessionStorage.setItem('oauth_v',verifier);
-  sessionStorage.setItem('oauth_s',state);
-  const w=window.open(authUrl,'oauth','width=480,height=640');
-  if(!w) toast('Popup blocked — allow popups for this site',true);
-}
-function handleOAuthReturn(){
-  const p=new URLSearchParams(location.search);
-  const code=p.get('code'), state=p.get('state'), err=p.get('error');
-  if(!code && !err) return false;
-  // clean url
-  history.replaceState({},document.title,location.pathname+location.hash);
-  if(err){ toast('OAuth failed: '+err,true); return true; }
-  if(state!==sessionStorage.getItem('oauth_s')){ toast('OAuth state mismatch — restart sign-in',true); return true; }
-  const verifier=sessionStorage.getItem('oauth_v');
-  const body=new URLSearchParams({
-    client_id:cfg.clientId, code:code, code_verifier:verifier,
-    redirect_uri:REDIRECT, grant_type:'authorization_code'
-  });
-  fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()})
-    .then(r=>r.json()).then(j=>{
-      if(j.error) throw new Error(j.error+': '+(j.error_description||''));
-      oauth={access_token:j.access_token, expires_at:Date.now()+(j.expires_in*1000)};
-      $('#acctBadge').style.display='inline-block'; $('#acctBadge').textContent='signed in';
-      toast('Signed in — loading vault');
-      loadRoot();
-    }).catch(e=>toast('Token exchange failed: '+e.message,true));
-  return true;
-}
-
-/* ---------- sync button ---------- */
-$('#syncBtn').onclick=()=>{
-  if(oauthRequired()){ signIn(); return; }
-  loadRoot();
-};
+/* ---------- sync ---------- */
+$('#syncBtn').onclick=()=>loadRoot();
 
 /* ---------- boot ---------- */
-(function boot(){
-  let handled=handleOAuthReturn();
-  if(oauthRequired()){
-    sidebar.innerHTML='<div class="tree-loading">Sign in to load your vault.<br><br><button class="btn primary" id="signinNow">Sign in with Google</button></div>';
-    setTimeout(()=>{ const b=document.getElementById('signinNow'); if(b) b.onclick=signIn; },0);
-  } else {
-    loadRoot();
-  }
-})();
+loadRoot();
 </script>
 </body>
 </html>
