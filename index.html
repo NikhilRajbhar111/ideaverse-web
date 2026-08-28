@@ -97,17 +97,18 @@
     <h3>Settings</h3>
     <label>Google Drive folder ID</label>
     <input id="setFolder" placeholder="folder ID from drive.google.com/.../folders/XXX" />
-    <label>Google API key (optional, if not using sign-in)</label>
-    <input id="setKey" placeholder="AIza…" type="password" />
-    <label>Google OAuth Client ID (recommended)</label>
-    <input id="setClient" placeholder="xxxx.apps.googleusercontent.com" />
-    <div class="hint">
-      <b>Recommended:</b> create an OAuth Client ID (Web app) and add this exact redirect URI:<br/>
-      <span class="mono" id="redirectHint"></span>
-      <button class="btn" id="copyRedirect" style="margin-top:6px">Copy redirect URI</button>
-    </div>
-    <label>Proxy URL (optional — for CORS-free hosting)</label>
+    <label>Proxy URL (RECOMMENDED — no CORS, no OAuth)</label>
     <input id="setProxy" placeholder="https://your-worker.workers.dev" />
+    <div class="hint">
+      Paste your Cloudflare Worker URL here. The worker holds your API key server-side,
+      so the browser needs <b>no key and no sign-in</b>. Deploy the included
+      <code>worker.js</code> at workers.cloudflare.com (free), set the
+      <code>DRIVE_API_KEY</code> variable, and paste the resulting URL above.
+    </div>
+    <label style="opacity:.7">Google API key (fallback if no proxy)</label>
+    <input id="setKey" placeholder="AIza…" type="password" style="opacity:.7" />
+    <label style="opacity:.7">Google OAuth Client ID (fallback if no proxy)</label>
+    <input id="setClient" placeholder="xxxx.apps.googleusercontent.com" style="opacity:.7" />
     <div class="row">
       <button class="btn" id="setCancel">Cancel</button>
       <button class="btn primary" id="setSave">Save & Sync</button>
@@ -146,6 +147,8 @@ function mediaUrl(fileId){
   return u;
 }
 function headers(){
+  // In proxy mode the worker holds the key and adds CORS — send nothing.
+  if(cfg.proxy) return {'Accept':'application/json'};
   const h={'Accept':'application/json'};
   if(oauth) h['Authorization']='Bearer '+oauth.access_token;
   else if(cfg.apiKey) h['X-Api-Key']=cfg.apiKey;
@@ -341,13 +344,10 @@ $('#search').addEventListener('input',e=>{
 /* ---------- settings modal ---------- */
 function openSettings(){
   $('#setFolder').value=cfg.folder; $('#setKey').value=cfg.apiKey; $('#setClient').value=cfg.clientId; $('#setProxy').value=cfg.proxy;
-  let base=location.href.split('?')[0]; if(!base.endsWith('/')) base+='/';
-  $('#redirectHint').textContent=base;
   $('#settingsModal').classList.add('show');
 }
 $('#settingsBtn').onclick=openSettings;
 $('#setCancel').onclick=()=>$('#settingsModal').classList.remove('show');
-$('#copyRedirect').onclick=()=>{ navigator.clipboard.writeText($('#redirectHint').textContent).then(()=>toast('Redirect URI copied')); };
 $('#setSave').onclick=()=>{
   cfg.folder=$('#setFolder').value.trim()||FOLDER_DEFAULT;
   cfg.apiKey=$('#setKey').value.trim();
