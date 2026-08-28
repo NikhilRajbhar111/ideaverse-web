@@ -4,4 +4,423 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ideaverse Web — your Obsidian vault, anywhere</title>
-<li...[truncated]
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧠</text></svg>" />
+<style>
+  :root{
+    --bg:#1e1e1e; --bg2:#252526; --bg3:#2d2d30; --border:#3c3c3c;
+    --fg:#e6e6e6; --muted:#9aa0a6; --accent:#7aa2f7; --accent2:#4d7cf7;
+    --code:#1b1b1b; --link:#7aa2f7; --note:#3b4252; --warn:#5a4a1f;
+    --ok:#3a5a40; --err:#5a2a2a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border)}
+  header .logo{font-size:18px}
+  header .title{font-weight:600;letter-spacing:.2px}
+  header .spacer{flex:1}
+  .btn{background:var(--bg3);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .btn.icon{padding:5px 9px}
+  #search{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--fg);padding:5px 9px;width:230px}
+  #main{flex:1;display:flex;min-height:0}
+  #sidebar{width:300px;min-width:200px;max-width:520px;background:var(--bg2);border-right:1px solid var(--border);overflow:auto;padding:6px 0}
+  #sidebar.resizing{user-select:none}
+  .grip{width:5px;cursor:col-resize;background:transparent}
+  #content{flex:1;overflow:auto;padding:22px 30px}
+  .tree-item{display:flex;align-items:center;gap:6px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+  .tree-item:hover{background:var(--bg3)}
+  .tree-item.active{background:#37373d}
+  .tw{width:14px;display:inline-block;text-align:center;color:var(--muted)}
+  .tree-children{margin-left:14px}
+  .tree-children.collapsed{display:none}
+  .badge{font-size:10px;padding:1px 6px;border-radius:10px;background:#3a3a3a;color:#cfcfcf;margin-left:6px}
+  .doc{max-width:860px}
+  .doc h1{font-size:1.7em;margin:.2em 0 .4em;border-bottom:1px solid var(--border);padding-bottom:.2em}
+  .doc h2{font-size:1.35em;margin:1em 0 .3em}
+  .doc h3{font-size:1.12em;margin:.9em 0 .3em}
+  .doc p{margin:.5em 0}
+  .doc ul,.doc ol{margin:.4em 0 .4em 1.2em}
+  .doc code{background:var(--code);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+  .doc pre{background:var(--code);padding:12px;border-radius:8px;overflow:auto}
+  .doc pre code{background:none;padding:0}
+  .doc a,.wikilink{color:var(--link);text-decoration:none;cursor:pointer}
+  .doc a:hover,.wikilink:hover{text-decoration:underline}
+  .doc blockquote{margin:.6em 0;padding:.4em .9em;border-left:4px solid var(--accent);background:rgba(122,162,247,.07)}
+  .doc table{border-collapse:collapse;margin:.6em 0}
+  .doc th,.doc td{border:1px solid var(--border);padding:5px 10px}
+  .callout{border-left:4px solid var(--accent);background:rgba(122,162,247,.07);padding:8px 12px;margin:.7em 0;border-radius:0 6px 6px 0}
+  .callout .ct{font-weight:700;text-transform:uppercase;font-size:.78em;letter-spacing:.06em;opacity:.9;display:block;margin-bottom:2px}
+  .meta{color:var(--muted);font-size:12px;margin-bottom:10px}
+  .tree-loading{color:var(--muted);padding:10px 14px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:80vw}
+  .toast.show{opacity:1}
+  .toast.err{background:#7a2a2a}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:60}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 22px;width:380px;max-width:92vw}
+  .modal h3{margin:0 0 12px}
+  .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  .modal input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--fg);padding:8px}
+  .modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+  .modal .mono{font-family:ui-monospace,monospace;font-size:11px;background:var(--bg3);padding:6px 8px;border-radius:6px;border:1px solid var(--border);word-break:break-all;margin-top:4px}
+  .modal .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .empty{color:var(--muted);text-align:center;margin-top:18vh;font-size:15px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .syncbtn.syncing .spin{display:inline-block}
+  .spin{display:none}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">🧠</span>
+  <span class="title">Ideaverse Web</span>
+  <span id="demoBadge" class="badge" style="display:none">DEMO</span>
+  <span id="acctBadge" class="badge" style="display:none"></span>
+  <span class="spacer"></span>
+  <input id="search" placeholder="🔍 search notes…" />
+  <button class="btn" id="syncBtn" title="reload vault">⟳ Sync</button>
+  <button class="btn" id="settingsBtn">⚙ Settings</button>
+</header>
+<div id="main">
+  <div id="sidebar"><div class="tree-loading">loading…</div></div>
+  <div class="grip" id="grip"></div>
+  <div id="content"><div class="empty">Open a note from the sidebar, or sign in to load your Drive vault.</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label>Google Drive folder ID</label>
+    <input id="setFolder" placeholder="folder ID from drive.google.com/.../folders/XXX" />
+    <label>Google API key (optional, if not using sign-in)</label>
+    <input id="setKey" placeholder="AIza…" type="password" />
+    <label>Google OAuth Client ID (recommended)</label>
+    <input id="setClient" placeholder="xxxx.apps.googleusercontent.com" />
+    <div class="hint">
+      <b>Recommended:</b> create an OAuth Client ID (Web app) and add this exact redirect URI:<br/>
+      <span class="mono" id="redirectHint"></span>
+      <button class="btn" id="copyRedirect" style="margin-top:6px">Copy redirect URI</button>
+    </div>
+    <label>Proxy URL (optional — for CORS-free hosting)</label>
+    <input id="setProxy" placeholder="https://your-worker.workers.dev" />
+    <div class="row">
+      <button class="btn" id="setCancel">Cancel</button>
+      <button class="btn primary" id="setSave">Save & Sync</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+function toast(msg, isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',3200); }
+function sha256_hex(str){ const b=new TextEncoder().encode(str); return crypto.subtle.digest('SHA-256',b).then(h=>[...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')); }
+
+/* ---------- config (localStorage) ---------- */
+const CFG_KEY='ideaverse.cfg.v1';
+const FOLDER_DEFAULT='1a-sVQYqCBO_KJ6HcmUdUPeNAuIOUmmkt';
+let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+cfg.folder = cfg.folder || FOLDER_DEFAULT;
+cfg.apiKey = cfg.apiKey || '';
+cfg.clientId = cfg.clientId || '';
+cfg.proxy = cfg.proxy || '';
+let oauth = null; // {access_token, expires_at}
+
+/* ---------- URL building ---------- */
+function driveApiBase(){
+  if(cfg.proxy) return cfg.proxy.replace(/\/$/,'') + '/drive/v3/';
+  return 'https://www.googleapis.com/drive/v3/';
+}
+function mediaUrl(fileId){
+  if(cfg.proxy) return cfg.proxy.replace(/\/$/,'') + '/media/' + fileId;
+  let u='https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(fileId)+'?alt=media';
+  if(oauth) u+='&access_token='+encodeURIComponent(oauth.access_token);
+  else if(cfg.apiKey) u+='&key='+encodeURIComponent(cfg.apiKey);
+  return u;
+}
+function headers(){
+  const h={'Accept':'application/json'};
+  if(oauth) h['Authorization']='Bearer '+oauth.access_token;
+  else if(cfg.apiKey) h['X-Api-Key']=cfg.apiKey;
+  return h;
+}
+function apiList(folderId){
+  const base=driveApiBase();
+  const q="'"+folderId+"' in parents and trashed = false";
+  const url=base+'files?pageSize=1000&fields=files(id,name,mimeType,size)&q='+encodeURIComponent(q);
+  return fetch(url,{headers:headers()}).then(r=>{
+    if(!r.ok) throw new Error('list failed ('+r.status+') — '+(oauth?'check the vault is shared with you or sign in with the owner account':'check API key / folder share'));
+    return r.json();
+  }).then(j=>j.files||[]);
+}
+
+/* ---------- tree (single source of truth) ---------- */
+const root={name:'ROOT',children:[],isFolder:true,expanded:true,id:'__root__',path:''};
+let allFiles=[];
+const sidebar=$('#sidebar');
+
+function buildTreeFromPaths(files){
+  const root={name:'ROOT',children:[],isFolder:true,expanded:true,id:'__root__',path:''};
+  const dirMap={ '':root };
+  files.forEach(f=>{
+    if(f.isFolder) return;
+    const parts=f.path.split('/').filter(Boolean);
+    const name=parts.pop();
+    let cur=root, acc='';
+    for(const p of parts){
+      acc+=p+'/';
+      if(!dirMap[acc]){
+        const d={name:p,children:[],isFolder:true,expanded:true,id:f.id+'_dir_'+acc,path:acc.slice(0,-1)};
+        dirMap[acc]=d; cur.children.push(d);
+      }
+      cur=dirMap[acc];
+    }
+    cur.children.push({name:name,isFolder:false,id:f.id,path:f.path,mimeType:f.mimeType,size:f.size});
+  });
+  return root;
+}
+function sortItems(a,b){ if(a.isFolder!==b.isFolder) return a.isFolder?-1:1; return a.name.localeCompare(b.name); }
+function renderTree(){
+  sidebar.innerHTML='';
+  const walk=(node,depth)=>{
+    const row=document.createElement('div');
+    row.className='tree-item';
+    row.style.paddingLeft=(8+depth*14)+'px';
+    if(node.isFolder){
+      const tw=document.createElement('span'); tw.className='tw'; tw.textContent=node.expanded?'▾':'▸';
+      const nm=document.createElement('span'); nm.textContent=node.name;
+      row.append(tw,nm);
+      row.onclick=()=>{ node.expanded=!node.expanded; renderTree(); };
+      sidebar.appendChild(row);
+      if(node.expanded) node.children.slice().sort(sortItems).forEach(c=>walk(c,depth+1));
+    } else {
+      const tw=document.createElement('span'); tw.className='tw'; tw.textContent='•';
+      const nm=document.createElement('span'); nm.textContent=node.name;
+      row.append(tw,nm);
+      row.onclick=()=>openFile(node);
+      sidebar.appendChild(row);
+    }
+  };
+  root.children.slice().sort(sortItems).forEach(c=>walk(c,0));
+}
+
+/* ---------- open / render ---------- */
+let currentFile=null;
+function openFile(node){
+  document.querySelectorAll('.tree-item.active').forEach(e=>e.classList.remove('active'));
+  // highlight
+  document.querySelectorAll('.tree-item').forEach(e=>{ if(e.textContent===node.name) {} });
+  currentFile=node;
+  const content=$('#content');
+  content.innerHTML='<div class="doc"><div class="meta">'+esc(node.path||node.name)+' <span class="spinner"></span></div></div>';
+  fetch(mediaUrl(node.id)).then(r=>{
+    if(!r.ok){ const why = r.status===403?' — file not shared / no permission':r.status===404?' — file not found':''; throw new Error('download failed ('+r.status+')'+why); }
+    return r.text();
+  }).then(txt=>{
+    content.innerHTML='<div class="doc">'+renderMarkdown(txt)+'</div>';
+    bindWiki();
+  }).catch(e=>{
+    content.innerHTML='<div class="doc"><div class="meta">'+esc(node.name)+'</div><p style="color:#e06c6c">Failed to open: '+esc(e.message)+'</p></div>';
+  });
+}
+const WIKI={};
+function bindWiki(){
+  document.querySelectorAll('.wikilink').forEach(a=>{
+    a.onclick=()=>{
+      const name=a.dataset.wiki;
+      const hit=allFiles.find(f=>f.path.toLowerCase().endsWith(name.toLowerCase()+'.md')||f.name.toLowerCase()===name.toLowerCase()+'.md'||f.name.toLowerCase()===name.toLowerCase());
+      if(hit){ const node=findNodeByPath(hit.path); if(node) openFile(node); else toast('Linked note not loaded',true); }
+      else toast('Linked note not found: '+name,true);
+    };
+  });
+}
+function findNodeByPath(path){
+  let cur=root;
+  for(const p of path.split('/').filter(Boolean)){
+    const next=cur.children.find(c=>c.name===p);
+    if(!next) return null; cur=next;
+  }
+  return cur.isFolder?null:cur;
+}
+
+/* ---------- minimal markdown ---------- */
+function renderMarkdown(md){
+  const lines=md.replace(/\r/g,'').split('\n');
+  let html='', i=0, inCode=false, codeBuf=[];
+  const inline=t=>{
+    t=esc(t);
+    t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
+    t=t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    t=t.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+    t=t.replace(/\[\[([^\]]+)\]\]/g,(m,p)=>{ const name=p.split('|')[0]; return '<span class="wikilink" data-wiki="'+esc(name)+'">'+esc(p.split('|')[1]||name)+'</span>'; });
+    t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return t;
+  };
+  while(i<lines.length){
+    const line=lines[i];
+    if(line.startsWith('```')){ if(!inCode){inCode=true;codeBuf=[];} else {inCode=false; html+='<pre><code>'+esc(codeBuf.join('\n'))+'</code></pre>';} i++; continue; }
+    if(inCode){ codeBuf.push(line); i++; continue; }
+    if(line.startsWith('# ')){ html+='<h1>'+inline(line.slice(2))+'</h1>'; i++; continue; }
+    if(line.startsWith('## ')){ html+='<h2>'+inline(line.slice(3))+'</h2>'; i++; continue; }
+    if(line.startsWith('### ')){ html+='<h3>'+inline(line.slice(4))+'</h3>'; i++; continue; }
+    if(/^>\s*\[!(\w+)\]/.test(line)){
+      const m=line.match(/^>\s*\[!(\w+)\]\s*(.*)$/);
+      const kind=m[1]; let body=''; i++;
+      while(i<lines.length && lines[i].startsWith('>')){ body+=(lines[i].replace(/^>\s?/,'')+' '); i++; }
+      html+='<div class="callout"><span class="ct">'+esc(kind)+'</span>'+inline(body)+'</div>';
+      continue;
+    }
+    if(line.startsWith('> ')){ const body=line.slice(2); html+='<blockquote>'+inline(body)+'</blockquote>'; i++; continue; }
+    if(/^\s*[-*]\s+/.test(line)){
+      let items='';
+      while(i<lines.length && /^\s*[-*]\s+/.test(lines[i])){ items+='<li>'+inline(lines[i].replace(/^\s*[-*]\s+/,''))+'</li>'; i++; }
+      html+='<ul>'+items+'</ul>'; continue;
+    }
+    if(/^\s*\d+\.\s+/.test(line)){
+      let items='';
+      while(i<lines.length && /^\s*\d+\.\s+/.test(lines[i])){ items+='<li>'+inline(lines[i].replace(/^\s*\d+\.\s+/,''))+'</li>'; i++; }
+      html+='<ol>'+items+'</ol>'; continue;
+    }
+    if(line.trim()===''){ i++; continue; }
+    html+='<p>'+inline(line)+'</p>'; i++;
+  }
+  return html;
+}
+
+/* ---------- load root ---------- */
+async function loadRoot(){
+  try{
+    sidebar.innerHTML='<div class="tree-loading"><span class="spinner"></span> loading vault…</div>';
+    allFiles=[];
+    const files=await apiList(cfg.folder);
+    const md=[];
+    for(const f of files){
+      if(f.mimeType==='application/vnd.google-apps.folder'){
+        md.push({id:f.id,name:f.name,isFolder:true,path:f.name,mimeType:f.mimeType});
+        const kids=await apiList(f.id);
+        for(const k of kids) md.push({id:k.id,name:k.name,isFolder:k.mimeType==='application/vnd.google-apps.folder',path:f.name+'/'+k.name,mimeType:k.mimeType});
+      } else {
+        md.push({id:f.id,name:f.name,isFolder:false,path:f.name,mimeType:f.mimeType});
+      }
+    }
+    allFiles=md.filter(f=>!f.isFolder || true);
+    // build search index
+    allFiles.forEach(f=>{ if(!f.isFolder) fileIndex[f.id]={name:f.name,path:f.path}; });
+    root.children=buildTreeFromPaths(md).children;
+    root.children.forEach(c=>{ if(c.isFolder) c.expanded=true; });
+    renderTree();
+  }catch(e){
+    sidebar.innerHTML='<div class="tree-loading">error: '+esc(e.message)+'</div>';
+    if(/cors|failed to fetch|load resource/i.test(e.message)) toast('CORS blocked. Use the proxy URL in Settings, or run from a same-origin host.',true);
+  }
+}
+
+/* ---------- search ---------- */
+const fileIndex={};
+$('#search').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  if(!q){ renderTree(); return; }
+  const matches=allFiles.filter(f=>!f.isFolder && (f.name.toLowerCase().includes(q)||f.path.toLowerCase().includes(q)));
+  sidebar.innerHTML='';
+  if(!matches.length){ sidebar.innerHTML='<div class="tree-loading">no matches</div>'; return; }
+  matches.forEach(m=>{
+    const row=document.createElement('div'); row.className='tree-item';
+    row.innerHTML='<span class="tw">•</span><span>'+esc(m.name)+'</span>';
+    row.onclick=()=>{ const n=findNodeByPath(m.path); if(n) openFile(n); };
+    sidebar.appendChild(row);
+  });
+});
+
+/* ---------- settings modal ---------- */
+function openSettings(){
+  $('#setFolder').value=cfg.folder; $('#setKey').value=cfg.apiKey; $('#setClient').value=cfg.clientId; $('#setProxy').value=cfg.proxy;
+  let base=location.href.split('?')[0]; if(!base.endsWith('/')) base+='/';
+  $('#redirectHint').textContent=base;
+  $('#settingsModal').classList.add('show');
+}
+$('#settingsBtn').onclick=openSettings;
+$('#setCancel').onclick=()=>$('#settingsModal').classList.remove('show');
+$('#copyRedirect').onclick=()=>{ navigator.clipboard.writeText($('#redirectHint').textContent).then(()=>toast('Redirect URI copied')); };
+$('#setSave').onclick=()=>{
+  cfg.folder=$('#setFolder').value.trim()||FOLDER_DEFAULT;
+  cfg.apiKey=$('#setKey').value.trim();
+  cfg.clientId=$('#setClient').value.trim();
+  cfg.proxy=$('#setProxy').value.trim();
+  localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+  $('#settingsModal').classList.remove('show');
+  if(oauth && !cfg.clientId){ oauth=null; }
+  loadRoot();
+};
+
+/* ---------- OAuth (PKCE, popup) ---------- */
+const SCOPES='https://www.googleapis.com/auth/drive.readonly';
+const REDIRECT=location.href.split('?')[0] + (location.href.split('?')[0].endsWith('/')?'':'/');
+function oauthRequired(){ return !!cfg.clientId && !oauth; }
+async function signIn(){
+  if(!cfg.clientId){ toast('Add a Google OAuth Client ID in Settings first',true); openSettings(); return; }
+  const verifier=b64url(crypto.getRandomValues(new Uint8Array(64)));
+  const challenge=await sha256_hex(verifier);
+  const state=b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const authUrl='https://accounts.google.com/o/oauth2/v2/auth?'
+    +'client_id='+encodeURIComponent(cfg.clientId)
+    +'&redirect_uri='+encodeURIComponent(REDIRECT)
+    +'&response_type=code&scope='+encodeURIComponent(SCOPES)
+    +'&code_challenge='+encodeURIComponent(challenge)
+    +'&code_challenge_method=S256'
+    +'&state='+encodeURIComponent(state)
+    +'&access_type=offline&prompt=consent';
+  sessionStorage.setItem('oauth_v',verifier);
+  sessionStorage.setItem('oauth_s',state);
+  const w=window.open(authUrl,'oauth','width=480,height=640');
+  if(!w) toast('Popup blocked — allow popups for this site',true);
+}
+function handleOAuthReturn(){
+  const p=new URLSearchParams(location.search);
+  const code=p.get('code'), state=p.get('state'), err=p.get('error');
+  if(!code && !err) return false;
+  // clean url
+  history.replaceState({},document.title,location.pathname+location.hash);
+  if(err){ toast('OAuth failed: '+err,true); return true; }
+  if(state!==sessionStorage.getItem('oauth_s')){ toast('OAuth state mismatch — restart sign-in',true); return true; }
+  const verifier=sessionStorage.getItem('oauth_v');
+  const body=new URLSearchParams({
+    client_id:cfg.clientId, code:code, code_verifier:verifier,
+    redirect_uri:REDIRECT, grant_type:'authorization_code'
+  });
+  fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()})
+    .then(r=>r.json()).then(j=>{
+      if(j.error) throw new Error(j.error+': '+(j.error_description||''));
+      oauth={access_token:j.access_token, expires_at:Date.now()+(j.expires_in*1000)};
+      $('#acctBadge').style.display='inline-block'; $('#acctBadge').textContent='signed in';
+      toast('Signed in — loading vault');
+      loadRoot();
+    }).catch(e=>toast('Token exchange failed: '+e.message,true));
+  return true;
+}
+
+/* ---------- sync button ---------- */
+$('#syncBtn').onclick=()=>{
+  if(oauthRequired()){ signIn(); return; }
+  loadRoot();
+};
+
+/* ---------- boot ---------- */
+(function boot(){
+  let handled=handleOAuthReturn();
+  if(oauthRequired()){
+    sidebar.innerHTML='<div class="tree-loading">Sign in to load your vault.<br><br><button class="btn primary" id="signinNow">Sign in with Google</button></div>';
+    setTimeout(()=>{ const b=document.getElementById('signinNow'); if(b) b.onclick=signIn; },0);
+  } else {
+    loadRoot();
+  }
+})();
+</script>
+</body>
+</html>
