@@ -259,6 +259,25 @@ function renderMarkdown(md){
       continue;
     }
     if(line.startsWith('> ')){ const body=line.slice(2); html+='<blockquote>'+inline(body)+'</blockquote>'; i++; continue; }
+    // ---- markdown table ----
+    if(/^\s*\|.*\|\s*$/.test(line)){
+      const splitRow=r=>r.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim());
+      const header=splitRow(line);
+      const delim=lines[i+1]||'';
+      if(/^\s*\|?[\s:|-]+\|?\s*$/.test(delim) && /-/.test(delim) && /^\s*\|.*\|\s*$/.test(delim)){
+        i+=2; // consume header + delimiter
+        const rows=[];
+        while(i<lines.length && /^\s*\|.*\|\s*$/.test(lines[i]) && lines[i].trim()!==''){
+          rows.push(splitRow(lines[i])); i++;
+        }
+        let t='<table><thead><tr>';
+        header.forEach(c=>t+='<th>'+inline(c)+'</th>');
+        t+='</tr></thead><tbody>';
+        rows.forEach(r=>{ t+='<tr>'; header.forEach((_,idx)=>t+='<td>'+(inline(r[idx]||'')||'')+'</td>'); t+='</tr>'; });
+        t+='</tbody></table>';
+        html+=t; continue;
+      }
+    }
     if(/^\s*[-*]\s+/.test(line)){
       let items='';
       while(i<lines.length && /^\s*[-*]\s+/.test(lines[i])){ items+='<li>'+inline(lines[i].replace(/^\s*[-*]\s+/,''))+'</li>'; i++; }
